@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OrgSense — Living Functional Org Chart (POC)</title>
+  <meta name="description" content="A proof-of-concept 'functional org chart' — describe what you do in plain language, then find who does what across the organization." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AD%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- ===== Top bar ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🧭</span>
+      <span class="brand-name">OrgSense</span>
+      <span class="badge badge-poc" title="This is a proof of concept built with AI assistance.">PROOF OF CONCEPT</span>
+    </div>
+    <div class="topbar-right">
+      <div class="coverage" id="coverageStat" title="Share of staff who have described what they actually do.">
+        <span class="coverage-num" id="coverageNum">—</span>
+        <span class="coverage-label">profiles described</span>
+      </div>
+      <button class="btn btn-ghost" id="browseBtn" type="button">Browse the org</button>
+      <button class="btn btn-ghost" id="settingsBtn" type="button" aria-label="Settings">⚙︎</button>
+      <div class="whoami" id="whoami" title="Who you're signed in as (demo only)"></div>
+    </div>
+  </header>
+
+  <!-- ===== Chat area ===== -->
+  <main class="chat-wrap">
+    <div class="chat-scroll" id="chatScroll">
+      <div class="chat-inner" id="chatInner"><!-- messages injected here --></div>
+    </div>
+
+    <div class="composer">
+      <form id="composerForm" class="composer-form" autocomplete="off">
+        <textarea id="chatInput" class="chat-input" rows="1"
+          placeholder="Ask who does something, or tell me what you do…"></textarea>
+        <button class="btn btn-primary send-btn" id="sendBtn" type="submit" aria-label="Send">→</button>
+      </form>
+      <div class="composer-hint" id="engineHint"></div>
+    </div>
+  </main>
+
+  <!-- ===== Login overlay (demo only) ===== -->
+  <div class="overlay" id="loginOverlay" hidden>
+    <div class="modal modal-login">
+      <div class="modal-head">
+        <h2>Sign in <span class="muted">(demo)</span></h2>
+      </div>
+      <p class="muted">
+        This proof of concept has no real login. Pick who you are so the system can
+        pre-fill "your" information — or add yourself as a new person.
+      </p>
+      <label class="field-label" for="loginSelect">I am…</label>
+      <select id="loginSelect" class="input"></select>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="loginConfirm" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Browse panel ===== -->
+  <div class="overlay" id="browseOverlay" hidden>
+    <div class="modal modal-wide">
+      <div class="modal-head">
+        <h2>The org, at a glance</h2>
+        <button class="btn btn-ghost close-x" data-close="browseOverlay" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="muted" id="browseSummary"></p>
+      <div class="browse-list" id="browseList"></div>
+    </div>
+  </div>
+
+  <!-- ===== Settings panel ===== -->
+  <div class="overlay" id="settingsOverlay" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Settings</h2>
+        <button class="btn btn-ghost close-x" data-close="settingsOverlay" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <section class="settings-section">
+        <h3>Search engine</h3>
+        <label class="switch-row">
+          <input type="checkbox" id="useRealAI" />
+          <span>Use real Claude AI (bring your own API key)</span>
+        </label>
+        <p class="muted small">
+          Off by default. The demo works fully without this — it uses a local
+          keyword/synonym matcher. Turn this on to route search and profile
+          parsing through the real model.
+        </p>
+        <div id="realAIFields" class="real-ai-fields" hidden>
+          <label class="field-label" for="apiKey">Anthropic API key</label>
+          <input type="password" id="apiKey" class="input" placeholder="sk-ant-…" />
+          <p class="muted small">Stored only in this browser (localStorage). Never committed, never sent anywhere except Anthropic.</p>
+          <label class="field-label" for="modelSelect">Model</label>
+          <select id="modelSelect" class="input">
+            <option value="claude-opus-4-8">Claude Opus 4.8 (most capable)</option>
+            <option value="claude-sonnet-5">Claude Sonnet 5 (balanced)</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 (fastest / cheapest)</option>
+          </select>
+          <button class="btn btn-ghost" id="testKeyBtn" type="button">Test key</button>
+          <span id="testKeyResult" class="test-result"></span>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>Demo data</h3>
+        <div class="settings-buttons">
+          <button class="btn btn-ghost" id="exportBtn" type="button">Export JSON</button>
+          <button class="btn btn-ghost" id="importBtn" type="button">Import JSON</button>
+          <button class="btn btn-ghost btn-danger" id="resetBtn" type="button">Reset to sample data</button>
+          <button class="btn btn-ghost" id="switchUserBtn" type="button">Switch user</button>
+        </div>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <p class="muted small">
+          Everything you enter is stored in this browser only. Export to save a
+          snapshot (e.g. to show leadership on another laptop); Reset restores the
+          fictional sample organization.
+        </p>
+      </section>
+
+      <section class="settings-section">
+        <p class="muted small">
+          Built with AI assistance. See
+          <a href="AI-DISCLOSURE.md" target="_blank" rel="noopener">AI-DISCLOSURE.md</a>
+          and the <a href="README.md" target="_blank" rel="noopener">README</a> for what the AI did and what the human did.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- Templates could go here; kept minimal for the POC. -->
+  <script src="js/data.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

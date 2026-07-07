@@ -1,0 +1,16 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Node (not used by the app, but keep local tooling out of the repo)
+node_modules/
+npm-debug.log*
+
+# Local scratch
+*.local
+
+# Claude Code local tooling (preview server, launch config) — not part of the app
+.claude/
