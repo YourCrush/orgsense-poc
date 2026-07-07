@@ -7,6 +7,9 @@
 
   var chatInner, chatScroll, chatInput, composerForm;
   var currentUser = null;
+  // If sign-in is triggered by an action that needs a persona (e.g. "Update my
+  // information"), we stash that action here and resume it after they pick.
+  var pendingAfterLogin = null;
 
   // ---- Small utilities ---------------------------------------------------
   function el(tag, cls, html) {
@@ -205,7 +208,11 @@
 
   // ---- Update (describe → parse → save) flow -----------------------------
   function startUpdateFlow(seedText) {
-    if (!currentUser) { openLogin(); return; }
+    if (!currentUser) {
+      pendingAfterLogin = function () { startUpdateFlow(seedText); };
+      openLogin();
+      return;
+    }
 
     var intro = botBubble(
       "<p>Let's update <strong>" + esc(currentUser.name) + "</strong>'s profile " +
@@ -383,6 +390,11 @@
   function openLogin() {
     var sel = document.getElementById("loginSelect");
     sel.innerHTML = "";
+    // Start with nothing chosen — don't pick a persona for them.
+    var placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "— Choose a persona —";
+    sel.appendChild(placeholder);
     var people = OrgData.getPeople().slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
     people.forEach(function (p) {
       var o = document.createElement("option");
@@ -400,6 +412,7 @@
   function confirmLogin() {
     var sel = document.getElementById("loginSelect");
     var id = sel.value;
+    if (!id) { sel.focus(); return; } // placeholder still selected — wait for a real choice
     if (id === "__new__") {
       var name = window.prompt("Your name:");
       if (!name) return;
@@ -423,11 +436,16 @@
     hide("loginOverlay");
     renderWhoami();
     refreshCoverage();
+    if (pendingAfterLogin) {
+      var resume = pendingAfterLogin;
+      pendingAfterLogin = null;
+      resume();
+    }
   }
 
   function renderWhoami() {
     var w = document.getElementById("whoami");
-    w.textContent = currentUser ? "Signed in: " + firstName(currentUser.name) : "";
+    w.textContent = currentUser ? "Signed in: " + firstName(currentUser.name) : "Sign in";
   }
 
   // ---- Settings ----------------------------------------------------------
@@ -486,10 +504,11 @@
     refreshCoverage();
     refreshEngineHint();
 
-    // Restore "logged in" user if present.
-    var uid = OrgData.getCurrentUserId();
-    if (uid) currentUser = OrgData.getPersonById(uid);
-    if (currentUser) renderWhoami();
+    // Start signed out on every load — don't pick a persona for anyone.
+    // (Entered profile data still persists; only the "who am I" resets.)
+    OrgData.setCurrentUserId("");
+    currentUser = null;
+    renderWhoami();
 
     composerForm.addEventListener("submit", function (e) {
       e.preventDefault();
@@ -506,13 +525,14 @@
     document.getElementById("browseBtn").addEventListener("click", openBrowse);
     document.getElementById("settingsBtn").addEventListener("click", openSettings);
     document.getElementById("loginConfirm").addEventListener("click", confirmLogin);
+    document.getElementById("whoami").addEventListener("click", openLogin);
 
     // Close buttons on overlays
     Array.prototype.forEach.call(document.querySelectorAll("[data-close]"), function (btn) {
       btn.addEventListener("click", function () { hide(btn.getAttribute("data-close")); });
     });
-    // Click outside modal closes browse/settings (not login)
-    ["browseOverlay", "settingsOverlay"].forEach(function (id) {
+    // Click outside modal closes it (login can now be dismissed too).
+    ["browseOverlay", "settingsOverlay", "loginOverlay"].forEach(function (id) {
       document.getElementById(id).addEventListener("click", function (e) {
         if (e.target === this) hide(id);
       });
@@ -582,9 +602,8 @@
       openLogin();
     });
 
-    // Greet, then require "login".
+    // Greet. No forced login — people choose a persona from the top-right chip.
     greet();
-    if (!currentUser) openLogin();
   }
 
   if (document.readyState === "loading") {
