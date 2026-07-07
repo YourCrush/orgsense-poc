@@ -65,7 +65,7 @@
     var chips = el("div", "chips");
     chips.appendChild(makeChip("✏️", "Update my information", function () { startUpdateFlow(); }));
     chips.appendChild(makeChip("🔎", "Find who does something", function () { promptExample("Who is responsible for Windows updates in the College of Engineering?"); }));
-    chips.appendChild(makeChip("👥", "Find a team", function () { promptExample("Who works on the Information Security Office team?"); }));
+    chips.appendChild(makeChip("👥", "Find a team", function () { showTeamList(); }));
     chips.appendChild(makeChip("🗂️", "Browse the org", function () { openBrowse(); }));
     bubble.appendChild(chips);
 
@@ -117,8 +117,10 @@
   // ---- Search flow -------------------------------------------------------
   function runSearch(query) {
     var typing = showTyping();
+    var teamMatches = OrgEngine.searchTeams(query); // local, independent of AI toggle
     OrgEngine.search(query).then(function (res) {
       typing.remove();
+      res.teams = teamMatches;
       renderSearchResults(query, res);
     }).catch(function (err) {
       typing.remove();
@@ -129,34 +131,41 @@
   function renderSearchResults(query, res) {
     var bubble = el("div", "msg-bubble");
     var results = res.results || [];
+    var teamHits = (res.teams || []).filter(function (t) { return !t.skeleton; });
+    // Only surface a team when the match is meaningful (not an incidental hit).
+    var topTeam = (teamHits[0] && teamHits[0].score >= 5) ? teamHits[0].team : null;
 
     if (res.fellBack) {
       bubble.appendChild(el("p", "muted small", "⚠️ Real-AI request failed (" + esc(res.error || "") + ") — showing local matches instead."));
     }
 
-    if (!results.length) {
-      var empty = el("div", "empty-state",
+    if (!results.length && !topTeam) {
+      bubble.appendChild(el("p", null, "I searched every described role and every team's Team API for <strong>" + esc(query) + "</strong>."));
+      bubble.appendChild(el("div", "empty-state",
         "<strong>No one has told me they do that yet.</strong><br>" +
-        "That's the honest answer — this only works when people describe their roles. " +
-        "If <em>you</em> do this, click <strong>Update my information</strong> and it'll be findable next time."
-      );
-      bubble.appendChild(el("p", null, "I searched everyone's described role for <strong>" + esc(query) + "</strong>."));
-      bubble.appendChild(empty);
+        "That's the honest answer — this only works when people and teams describe themselves. " +
+        "If <em>you</em> do this, click <strong>Update my information</strong> and it'll be findable next time."));
       addMessage("bot", bubble);
       return;
     }
 
-    var lead = results.length === 1
-      ? "Here's who best matches <strong>" + esc(query) + "</strong>:"
-      : "Here are the closest matches for <strong>" + esc(query) + "</strong>:";
-    bubble.appendChild(el("p", null, lead));
+    if (topTeam) {
+      bubble.appendChild(el("p", null, "🧩 The team that provides this — and how to engage it:"));
+      bubble.appendChild(renderTeamCard(topTeam));
+    }
 
-    results.forEach(function (r) {
-      bubble.appendChild(renderPersonCard(r));
-    });
+    if (results.length) {
+      var lead = topTeam
+        ? "And the people whose described work matches:"
+        : (results.length === 1
+            ? "Here's who best matches <strong>" + esc(query) + "</strong>:"
+            : "Here are the closest matches for <strong>" + esc(query) + "</strong>:");
+      bubble.appendChild(el("p", null, lead));
+      results.forEach(function (r) { bubble.appendChild(renderPersonCard(r)); });
+    }
 
     if (res.engine === "claude") {
-      bubble.appendChild(el("div", "result-why", "Matched using Claude (" + esc(OrgData.loadSettings().model) + ")."));
+      bubble.appendChild(el("div", "result-why", "People matched using Claude (" + esc(OrgData.loadSettings().model) + ")."));
     }
     addMessage("bot", bubble);
   }
@@ -204,6 +213,82 @@
     if (c.teams) line.appendChild(el("span", null, "💬 Teams: " + esc(c.teams)));
     if (p.location) line.appendChild(el("span", null, "📍 " + esc(p.location)));
     return line;
+  }
+
+  // ---- Team API cards (Team Topologies) ----------------------------------
+  var MODE_LABELS = { "self-service": "Self-service", "request": "Request", "collaborate": "Collaborate" };
+
+  function renderTeamCard(team) {
+    var card = el("div", "team-card");
+    var head = el("div", "team-card-head");
+    head.appendChild(el("div", "result-name", esc(team.name)));
+    var tt = OrgData.TEAM_TYPES[team.type];
+    if (tt) head.appendChild(el("span", "team-badge team-badge--" + team.type, esc(tt.label)));
+    card.appendChild(head);
+
+    if (!team.described) {
+      card.appendChild(el("div", "result-meta",
+        "This team is in the directory, but <strong>hasn't published its Team API yet</strong> — so I can't tell you what it provides or how to engage it."));
+    } else {
+      if (tt) card.appendChild(el("div", "team-type-blurb muted small", esc(tt.label) + " team — " + esc(tt.blurb)));
+      if (team.mission) card.appendChild(el("div", "team-mission", esc(team.mission)));
+
+      if (team.provides && team.provides.length) {
+        card.appendChild(el("div", "team-subhead", "What we provide · how to engage"));
+        var list = el("div", "provides-list");
+        team.provides.forEach(function (p) {
+          var row = el("div", "provide-row");
+          row.appendChild(el("span", "provide-mode provide-mode--" + p.how, esc(MODE_LABELS[p.how] || p.how)));
+          row.appendChild(el("span", "provide-what", esc(p.what)));
+          if (p.detail) row.appendChild(el("span", "provide-detail", " — " + esc(p.detail)));
+          list.appendChild(row);
+        });
+        card.appendChild(list);
+      }
+
+      if (team.engage) {
+        var e = team.engage;
+        var meta = "";
+        if (e.channel) meta += '<span class="k">Reach us:</span> ' + esc(e.channel) + "<br>";
+        if (e.queue) meta += '<span class="k">Requests:</span> ' + esc(e.queue) + "<br>";
+        if (e.hours) meta += '<span class="k">Hours:</span> ' + esc(e.hours) + "<br>";
+        if (e.sla) meta += '<span class="k">SLA:</span> ' + esc(e.sla);
+        if (meta) card.appendChild(el("div", "result-meta", meta));
+      }
+    }
+
+    var members = (team.memberIds || []).map(function (id) { return OrgData.getPersonById(id); }).filter(Boolean);
+    if (members.length) {
+      var m = el("div", "team-members");
+      var parts = members.map(function (p) {
+        var role = p.functionalRole || p.officialTitle;
+        return esc(p.name) + (role ? ' <span class="muted">(' + esc(role) + ')</span>' : "");
+      });
+      m.innerHTML = '<span class="k">Team members:</span> ' + parts.join(", ");
+      card.appendChild(m);
+    }
+    return card;
+  }
+
+  function showTeamList() {
+    var teams = OrgData.getTeams().slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
+    var cov = OrgData.teamCoverage();
+    var bubble = el("div", "msg-bubble");
+    bubble.appendChild(el("p", null,
+      "Here are the teams. Pick one to see its <strong>Team API</strong> — what it provides and how to engage it. " +
+      '<span class="muted">(' + esc(cov.described) + " of " + esc(cov.total) + " have published one.)</span>"));
+    var chips = el("div", "chips");
+    teams.forEach(function (t) {
+      var label = t.name + (t.described ? "" : " · no API yet");
+      chips.appendChild(makeChip("🧩", label, function () {
+        addMessage("user", esc("Show me the " + t.name + " team"));
+        var b = el("div", "msg-bubble");
+        b.appendChild(renderTeamCard(t));
+        addMessage("bot", b);
+      }));
+    });
+    bubble.appendChild(chips);
+    addMessage("bot", bubble);
   }
 
   // ---- Update (describe → parse → save) flow -----------------------------
@@ -359,19 +444,33 @@
   function openBrowse() {
     var people = OrgData.getPeople();
     var cov = OrgData.coverage();
+    var tcov = OrgData.teamCoverage();
     document.getElementById("browseSummary").innerHTML =
-      esc(cov.described) + " of " + esc(cov.total) + " people (" + esc(cov.percent) +
-      "%) have described what they do. The greyed-out rows haven't — so they can't be found by function yet.";
+      esc(cov.described) + " of " + esc(cov.total) + " people (" + esc(cov.percent) + "%) have described what they do, and " +
+      esc(tcov.described) + " of " + esc(tcov.total) + " teams have published a Team API. " +
+      "Greyed-out rows haven't — so they can't be found by function yet.";
 
-    // Group by department.
+    var listEl = document.getElementById("browseList");
+    listEl.innerHTML = "";
+
+    // Teams first (the Team Topologies view), then people grouped by department.
+    listEl.appendChild(el("div", "browse-group-title", "Teams"));
+    OrgData.getTeams().slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (t) {
+      var row = el("div", "browse-row" + (t.described ? "" : " skeleton"));
+      var tt = OrgData.TEAM_TYPES[t.type];
+      var nameHtml = esc(t.name);
+      if (tt) nameHtml += ' <span class="team-badge team-badge--' + t.type + '">' + esc(tt.label) + "</span>";
+      if (!t.described) nameHtml += '<span class="pill-undescribed">no Team API</span>';
+      row.appendChild(el("div", "bn", nameHtml));
+      row.appendChild(el("div", "br", esc(t.described && t.provides[0] ? t.provides[0].what : "")));
+      listEl.appendChild(row);
+    });
+
     var groups = {};
     people.forEach(function (p) {
       var d = p.department || "Other";
       (groups[d] = groups[d] || []).push(p);
     });
-
-    var listEl = document.getElementById("browseList");
-    listEl.innerHTML = "";
     Object.keys(groups).sort().forEach(function (dept) {
       listEl.appendChild(el("div", "browse-group-title", esc(dept)));
       groups[dept].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (p) {

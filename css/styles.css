@@ -164,6 +164,45 @@ body {
   background: var(--surface-2); font-size: 14px; color: var(--text-muted);
 }
 
+/* ===== Team API cards (Team Topologies) ===== */
+.team-card {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px;
+  margin-top: 10px; background: var(--surface-2); border-left: 3px solid var(--accent);
+}
+.team-card:first-child { margin-top: 4px; }
+.team-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.team-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap;
+}
+.team-badge--platform { color: #3b82f6; border-color: #3b82f6; background: rgba(59, 130, 246, 0.12); }
+.team-badge--enabling { color: #8b5cf6; border-color: #8b5cf6; background: rgba(139, 92, 246, 0.12); }
+.team-badge--stream-aligned { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.team-badge--complicated-subsystem { color: #d97706; border-color: #d97706; background: rgba(217, 119, 6, 0.12); }
+.team-type-blurb { margin-top: 5px; }
+.team-mission { font-size: 14px; margin-top: 8px; line-height: 1.5; }
+.team-subhead {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-top: 13px; margin-bottom: 2px;
+}
+.provides-list { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.provide-row { font-size: 13px; line-height: 1.45; }
+.provide-mode {
+  display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; padding: 1px 7px; border-radius: 999px; margin-right: 8px;
+  border: 1px solid var(--border); vertical-align: 1px;
+}
+.provide-mode--self-service { color: var(--accent); border-color: var(--accent); }
+.provide-mode--request { color: #d97706; border-color: #d97706; }
+.provide-mode--collaborate { color: #8b5cf6; border-color: #8b5cf6; }
+.provide-what { font-weight: 600; }
+.provide-detail { color: var(--text-muted); }
+.team-members {
+  font-size: 13px; color: var(--text-muted); margin-top: 11px;
+  border-top: 1px dashed var(--border); padding-top: 9px; line-height: 1.5;
+}
+.team-members .k { color: var(--text); font-weight: 600; }
+
 /* ===== Update profile card (inline in chat) ===== */
 .profile-card {
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);

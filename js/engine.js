@@ -170,6 +170,71 @@
     return { engine: "simulated", terms: terms, results: results.slice(0, limit) };
   }
 
+  // ---- Team search (Team API / Team Topologies) --------------------------
+  // Always local/deterministic (independent of the real-AI toggle) so a "how
+  // do I consume capability X" question can surface the team that provides it.
+  function scoreSegments(segments, terms) {
+    var score = 0;
+    var matched = {};
+    for (var s = 0; s < segments.length; s++) {
+      var hay = normalize(segments[s].text || "");
+      if (!hay) continue;
+      for (var i = 0; i < terms.length; i++) {
+        var term = terms[i];
+        if (!term) continue;
+        var idx = hay.indexOf(term);
+        if (idx !== -1) {
+          var before = idx === 0 ? " " : hay.charAt(idx - 1);
+          var after = idx + term.length >= hay.length ? " " : hay.charAt(idx + term.length);
+          var boundaryOk = /[\s-]/.test(before) && /[\s-]/.test(after);
+          if (boundaryOk || term.length >= 5) {
+            score += segments[s].weight;
+            matched[term] = true;
+          }
+        }
+      }
+    }
+    return { score: score, matched: Object.keys(matched) };
+  }
+
+  function teamSegments(t) {
+    var types = (window.OrgData.TEAM_TYPES || {});
+    var provideWhat = (t.provides || []).map(function (p) { return p.what; }).join(" ");
+    var provideDetail = (t.provides || []).map(function (p) { return p.detail; }).join(" ");
+    var members = (t.memberIds || []).map(function (id) {
+      var p = window.OrgData.getPersonById(id);
+      return p ? (p.name + " " + (p.functionalRole || "")) : "";
+    }).join(" ");
+    return [
+      { text: t.name, weight: 5 },
+      { text: (types[t.type] && types[t.type].label) || "", weight: 3 },
+      { text: t.mission, weight: 3 },
+      { text: provideWhat, weight: 5 },
+      { text: provideDetail, weight: 2 },
+      { text: members, weight: 2 }
+    ];
+  }
+
+  function searchTeams(query, options) {
+    options = options || {};
+    var teams = window.OrgData.getTeams();
+    var terms = expandQuery(query);
+    var results = [];
+    for (var i = 0; i < teams.length; i++) {
+      var t = teams[i];
+      if (!t.described) {
+        // Undescribed teams have no Team API — only findable by name.
+        var ns = scoreSegments([{ text: t.name, weight: 5 }], terms);
+        if (ns.score > 0) results.push({ team: t, score: ns.score, matched: ns.matched, skeleton: true });
+        continue;
+      }
+      var r = scoreSegments(teamSegments(t), terms);
+      if (r.score > 0) results.push({ team: t, score: r.score, matched: r.matched, skeleton: false });
+    }
+    results.sort(function (a, b) { return b.score - a.score; });
+    return results.slice(0, options.limit || 3);
+  }
+
   // ---- Simulated free-text profile parser --------------------------------
   // Turns a plain-language self-description into structured fields (best
   // effort). Real Claude does this far better; this is the honest fallback.
@@ -361,6 +426,7 @@
 
   window.OrgEngine = {
     search: search,
+    searchTeams: searchTeams,
     parseSelfDescription: parseSelfDescription,
     expandQuery: expandQuery,
     // exposed for a quick "test my key" button in Settings

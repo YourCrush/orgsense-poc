@@ -22,7 +22,7 @@ You can also just open `index.html` directly in a browser — it runs fully clie
 
 ## The core idea (the workflow to show leadership)
 
-1. **Sign in** (demo only — pick who you are from a list, or add yourself).
+1. **Pick a persona** (demo only — the *Sign in* chip in the top-right lets you choose who you are, or add yourself). You can browse and search without this; you only need it to update a profile.
 2. **Update your information.** You're greeted by a single chat box. Click *"Update my information"* and describe your role in plain language — e.g. *"I'm the Deputy CISO. I'm responsible for vulnerability management and I run the security operations team."* The system parses that into a structured profile (role, responsibilities, skills, projects) that you can tidy up and save.
 3. **Ask a question later.** The next day, someone types *"Who is responsible for Windows updates in the College of Engineering?"* and gets back the right person, their team, and their contact info — **because someone told the system that's what they do.**
 4. **The honest failure mode.** If nobody has described a capability, the system says so plainly: *"No one has told me they do that yet."* That's the whole pitch for the larger effort — the value scales with how many people fill in their profiles. A **coverage stat** in the top bar makes that concrete.
@@ -31,7 +31,8 @@ You can also just open `index.html` directly in a browser — it runs fully clie
 
 - Search: *"Who handles MFA for students?"*, *"Who can help with a phishing email?"*, *"Who runs the HPC cluster?"*, *"Who do I ask about software licensing?"*
 - The **live-add moment:** search for something no one has described yet (e.g. *"Who does vulnerability management?"* — the seeded "Raj Patel" is intentionally left undescribed), get the empty answer, then fill in a profile and search again to see it appear.
-- **Browse the org** to show the coverage gap — greyed-out people are directory entries no one has described yet.
+- **Find a team** to show the **Team API** — pick a team (e.g. *Identity Services*) and you get what it provides and *how to engage it* (self-service vs. request vs. collaborate), not just a name. Capability searches like *"who handles MFA?"* surface the providing team alongside the person.
+- **Browse the org** to show the coverage gap — greyed-out people/teams are directory entries no one has described yet.
 
 ---
 
@@ -43,7 +44,7 @@ Everything runs in the browser. There is **no backend and no database** — whic
 | --- | --- |
 | **Storage** | The browser's `localStorage`. What you enter persists across reloads on that machine, so you can pre-load sample data and add "real" info live during a demo. **Export / Import (JSON)** lets you save a snapshot and reload it on another laptop. **Reset** restores the sample org. |
 | **The "AI"** | Two interchangeable engines (below). |
-| **Sample data** | ~20 fictional staff at a fictional "Northgate State University." Most have full descriptions; a handful are deliberately left *undescribed* to power the coverage stat and the live-add demo. |
+| **Sample data** | ~20 fictional staff **and 11 teams** at a fictional "Northgate State University." Most have full descriptions / published Team APIs; a handful are deliberately left *undescribed* to power the coverage stats and the live-add demo. |
 
 ### The two "AI" engines
 
@@ -51,6 +52,17 @@ Because a static site can't safely hide an API key, OrgSense ships with a **simu
 
 1. **Local matching engine (default, no key).** Tokenizes the question, expands it with a synonym map (so *"Windows updates"* also matches *patching / SCCM / Intune*), and scores each described profile across weighted fields (role, responsibilities, skills, projects, team, unit). It reports **which terms matched**, so a demo audience can see *why* a result came back. Deterministic, instant, works offline.
 2. **Real Claude (optional).** In **Settings → Search engine**, toggle *"Use real Claude AI"* and paste your own Anthropic API key. Search and profile-parsing then route through the real model via a direct browser call to the Messages API. The key is stored only in your browser and is never committed. Model defaults to `claude-opus-4-8` (selectable). If a live request fails, it automatically falls back to the local engine so the demo never dead-ends.
+
+### Teams — the Team API (Team Topologies)
+
+OrgSense models **teams**, not just people, using the [Team Topologies](https://teamtopologies.com/) idea of a **Team API**: each team publishes what it *is*, what it *provides*, and *how to engage it*.
+
+- Each team is tagged with a **team type** — *Platform*, *Enabling*, *Stream-aligned*, or *Complicated-subsystem* — shown as a badge. (The taxonomy is plain-language and easy to relabel for a non-technical audience.)
+- A team's card lists **what it provides**, each item tagged with an interaction mode — **self-service**, **request**, or **collaborate** — plus how to reach it (channel, queue, hours, SLA) and its members.
+- This turns a lookup from *"who do I email?"* into *"how do I consume this capability?"* — a capability search surfaces the **team that provides it** alongside the matching person.
+- Teams have their own coverage: one seeded team is intentionally left without a published Team API to show the gap (visible in **Browse the org** and the *Find a team* list).
+
+This is a **v1 slice** — team cards are seeded and read-only in the POC. Letting a team lead publish/update a Team API from the chat (mirroring the person flow) and mapping team-to-team dependencies are the natural next increments.
 
 ---
 
@@ -62,11 +74,12 @@ Because a static site can't safely hide an API key, OrgSense ships with a **simu
 ├── css/
 │   └── styles.css       # All styling; light + dark aware
 ├── js/
-│   ├── data.js          # Seed people + localStorage layer (storage, coverage, import/export)
-│   ├── engine.js        # Simulated matcher, free-text parser, optional Claude integration
-│   └── app.js           # UI wiring, chat, intent routing, update flow
+│   ├── data.js          # Seed people + teams + localStorage layer (storage, coverage, import/export)
+│   ├── engine.js        # Simulated matcher (people + teams), free-text parser, optional Claude integration
+│   └── app.js           # UI wiring, chat, intent routing, update flow, Team API cards
 ├── README.md
 ├── AI-DISCLOSURE.md     # What the AI did vs. what the human did
+├── INTEGRATIONS.md      # How to plumb in Microsoft Teams + Workday (design / drop-in reference)
 ├── LICENSE              # MIT
 └── .nojekyll            # Tell GitHub Pages to serve files as-is
 ```
@@ -101,7 +114,8 @@ The prompt for this POC explicitly asked for suggestions rather than treating th
 - **A "Browse the org" view and a coverage KPI** — leadership tends to want the whole picture and a number they can drive.
 - **Show *why* a result matched, and handle the empty case honestly** — the failure mode is the most persuasive part of the pitch.
 - **Free-text → structured profile** — capturing structure (not just a paragraph) is what makes search quality good; the parse step demonstrates the "AI plumbing" directly.
-- **For production, consider:** real SSO login; syncing published contact info from Workday/Teams automatically; a proper backend so profiles are shared org-wide (not per-browser); approval/ownership so people can only edit their own entry; and periodic nudges to raise coverage.
+- **Team Topologies "Team API" (implemented — v1)** — teams publish what they provide and *how to engage* them, tagged by team type. Reframes the tool from a directory into an operating model. See [teamtopologies.com](https://teamtopologies.com/).
+- **For production, consider:** real SSO login; syncing published contact info from Workday/Teams automatically; a proper backend so profiles are shared org-wide (not per-browser); approval/ownership so people can only edit their own entry; and periodic nudges to raise coverage. **[INTEGRATIONS.md](INTEGRATIONS.md)** is a concrete drop-in plan for the Workday + Microsoft Teams plumbing (official org structure in, self-service profile updates from inside Teams).
 
 ---
 

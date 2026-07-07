@@ -15,8 +15,19 @@
   "use strict";
 
   var PEOPLE_KEY = "orgsense.people.v1";
+  var TEAMS_KEY = "orgsense.teams.v1";
   var SETTINGS_KEY = "orgsense.settings.v1";
   var SESSION_KEY = "orgsense.currentUser.v1";
+
+  // Team Topologies team types (https://teamtopologies.com/). Kept here so the
+  // engine and UI share one definition. Labels are plain-language; the taxonomy
+  // is deliberately easy to swap or relabel for a non-technical audience.
+  var TEAM_TYPES = {
+    "platform": { label: "Platform", blurb: "Provides self-service capabilities other teams build on." },
+    "enabling": { label: "Enabling", blurb: "Helps other teams adopt skills or practices, then steps back." },
+    "stream-aligned": { label: "Stream-aligned", blurb: "Owns the end-to-end flow of a service to its users." },
+    "complicated-subsystem": { label: "Complicated subsystem", blurb: "Deep specialist expertise most teams shouldn't need to build." }
+  };
 
   // ---- Seed people -------------------------------------------------------
   // Fully described staff (described: true) + skeleton imports (described: false).
@@ -549,6 +560,227 @@
     }
   ];
 
+  // ---- Seed teams (Team API / Team Topologies) ---------------------------
+  // Each team publishes a lightweight "Team API": what it is, what it provides,
+  // and how to engage it. `provides[].how` is the interaction mode:
+  // self-service (X-as-a-service), request (queue), or collaborate.
+  // `memberIds` link to SEED_PEOPLE. One team is left undescribed to power the
+  // team-coverage stat and the "no Team API yet" empty state.
+  var SEED_TEAMS = [
+    {
+      id: "team-infosec",
+      name: "Information Security Office",
+      type: "enabling",
+      department: "Office of Information Technology",
+      mission: "We help every team across the university reduce security risk — through guidance, review, monitoring, and response — without owning their systems.",
+      provides: [
+        { what: "Security reviews & risk assessments", how: "request", detail: "Submit via the Security Review queue in ServiceNow." },
+        { what: "Incident response", how: "request", detail: "Escalate suspected incidents 24/7 to the SOC hotline." },
+        { what: "Security awareness & phishing training", how: "self-service", detail: "Enroll in the LMS; simulated campaigns run automatically." },
+        { what: "Privacy / FERPA & GDPR guidance", how: "collaborate", detail: "Book a consult with the data privacy analyst." }
+      ],
+      engage: {
+        channel: "Teams: #info-security",
+        queue: "ServiceNow → Security",
+        hours: "Mon–Fri 8–5; SOC on-call 24/7",
+        sla: "Incidents: 1 hr · Reviews: 5 business days"
+      },
+      memberIds: ["u-marcus-webb", "u-priya-raman", "u-aisha-bello", "u-robert-kim"],
+      described: true
+    },
+    {
+      id: "team-identity",
+      name: "Identity Services",
+      type: "platform",
+      department: "Office of Information Technology",
+      mission: "We provide self-service identity and access — login, MFA, and account lifecycle — so teams don't have to build their own.",
+      provides: [
+        { what: "Single sign-on (SSO) app integration", how: "request", detail: "Request app onboarding via the Identity queue." },
+        { what: "Multi-factor authentication (MFA)", how: "self-service", detail: "Users self-enroll at mfa.northgate.edu." },
+        { what: "Account provisioning / deprovisioning", how: "self-service", detail: "Automated from Workday; exceptions via ticket." }
+      ],
+      engage: {
+        channel: "Teams: #identity",
+        queue: "ServiceNow → Identity",
+        hours: "Mon–Fri 8–5",
+        sla: "App onboarding: 10 business days"
+      },
+      memberIds: ["u-sofia-nguyen"],
+      described: true
+    },
+    {
+      id: "team-network",
+      name: "Network & Infrastructure",
+      type: "platform",
+      department: "Office of Information Technology",
+      mission: "We run the campus network as a reliable platform — wired, wireless, VPN, and firewall — so everything else can just connect.",
+      provides: [
+        { what: "Campus Wi-Fi & wired network", how: "self-service", detail: "Connect to 'Northgate-Secure'; issues via ticket." },
+        { what: "VPN / remote access", how: "self-service", detail: "Download the VPN client from the software portal." },
+        { what: "Firewall changes", how: "request", detail: "Submit a firewall change request (CAB-reviewed)." }
+      ],
+      engage: {
+        channel: "Teams: #network",
+        queue: "ServiceNow → Network",
+        hours: "Mon–Fri 7–6; on-call for outages",
+        sla: "Firewall changes: weekly CAB"
+      },
+      memberIds: ["u-james-carter"],
+      described: true
+    },
+    {
+      id: "team-cloud",
+      name: "Cloud Platform",
+      type: "platform",
+      department: "Office of Information Technology",
+      mission: "We provide governed AWS landing zones and infrastructure-as-code so teams can ship to the cloud safely and quickly.",
+      provides: [
+        { what: "AWS account / landing zone", how: "request", detail: "Request a new account via the Cloud intake form." },
+        { what: "Infrastructure-as-code modules", how: "self-service", detail: "Reusable Terraform modules in the internal registry." },
+        { what: "Cloud cost & security review", how: "collaborate", detail: "Quarterly reviews; ad-hoc on request." }
+      ],
+      engage: {
+        channel: "Teams: #cloud-platform",
+        queue: "ServiceNow → Cloud",
+        hours: "Mon–Fri 8–5",
+        sla: "New account: 3 business days"
+      },
+      memberIds: ["u-grace-liu"],
+      described: true
+    },
+    {
+      id: "team-coe-it",
+      name: "Distributed IT — Engineering",
+      type: "stream-aligned",
+      department: "College of Engineering",
+      mission: "We are the College of Engineering's embedded IT — we keep Engineering's labs, staff devices, and classroom tech running end to end.",
+      provides: [
+        { what: "Endpoint management & Windows updates (Engineering)", how: "self-service", detail: "Managed automatically via Intune; issues via ticket." },
+        { what: "Lab imaging & provisioning", how: "request", detail: "Request lab builds before each term." }
+      ],
+      engage: {
+        channel: "Teams: #coe-it",
+        queue: "ServiceNow → COE IT",
+        hours: "Mon–Fri 8–5",
+        sla: "Device issues: 1 business day"
+      },
+      memberIds: ["u-dana-ortiz"],
+      described: true
+    },
+    {
+      id: "team-servicedesk",
+      name: "IT Service Desk",
+      type: "stream-aligned",
+      department: "Office of Information Technology",
+      mission: "We're the front door to IT — first-line support for every student and staff member, resolving or routing every request.",
+      provides: [
+        { what: "Password resets & account help", how: "self-service", detail: "Reset at password.northgate.edu, or call the desk." },
+        { what: "Tier-1 support & ticket triage", how: "request", detail: "Open a ticket in ServiceNow or chat with us." }
+      ],
+      engage: {
+        channel: "Teams: #help-desk",
+        queue: "ServiceNow → Service Desk",
+        hours: "Mon–Fri 7–7; Sat 9–1",
+        sla: "First response: 1 hour"
+      },
+      memberIds: ["u-ethan-brooks"],
+      described: true
+    },
+    {
+      id: "team-enterprise-apps",
+      name: "Enterprise Applications",
+      type: "platform",
+      department: "Office of Information Technology",
+      mission: "We build and run shared web applications and the university portal so teams don't each reinvent the front door.",
+      provides: [
+        { what: "University portal & web apps", how: "self-service", detail: "Access at my.northgate.edu." },
+        { what: "SSO / API integration for web apps", how: "collaborate", detail: "Partner with us to integrate your application." },
+        { what: "Accessibility (WCAG) remediation", how: "request", detail: "Request an accessibility review." }
+      ],
+      engage: {
+        channel: "Teams: #enterprise-apps",
+        queue: "ServiceNow → Enterprise Apps",
+        hours: "Mon–Fri 8–5",
+        sla: "Integration intake: 2 weeks"
+      },
+      memberIds: ["u-david-park"],
+      described: true
+    },
+    {
+      id: "team-research-tech",
+      name: "Research Technology",
+      type: "complicated-subsystem",
+      department: "Office of Research",
+      mission: "We are the specialists for research computing — HPC, research data, and lab Linux — deep expertise most teams shouldn't need to build.",
+      provides: [
+        { what: "HPC cluster access", how: "request", detail: "Request an allocation; grant-backed priority available." },
+        { what: "Research data storage", how: "request", detail: "Request tiered storage for your project." },
+        { what: "Lab Linux & grant computing consults", how: "collaborate", detail: "Book a consult for grant computing needs." }
+      ],
+      engage: {
+        channel: "Teams: #research-computing",
+        queue: "ServiceNow → Research Tech",
+        hours: "Mon–Fri 9–5",
+        sla: "Allocation: 5 business days"
+      },
+      memberIds: ["u-lena-fischer"],
+      described: true
+    },
+    {
+      id: "team-learning-spaces",
+      name: "Learning Spaces",
+      type: "stream-aligned",
+      department: "Office of Information Technology",
+      mission: "We keep classrooms and event spaces teaching-ready — AV, hybrid rooms, and lecture capture — aligned to the academic calendar.",
+      provides: [
+        { what: "Classroom AV support", how: "request", detail: "Report a classroom issue for same-day response." },
+        { what: "Event AV setup", how: "request", detail: "Book event support two weeks ahead." },
+        { what: "Lecture capture", how: "self-service", detail: "Enabled in capture-equipped rooms." }
+      ],
+      engage: {
+        channel: "Teams: #av-support",
+        queue: "ServiceNow → Learning Spaces",
+        hours: "Mon–Fri 7–6 during term",
+        sla: "Classroom issues: same day"
+      },
+      memberIds: ["u-tom-reyes"],
+      described: true
+    },
+    {
+      id: "team-hr-tech",
+      name: "Human Resources Technology",
+      type: "platform",
+      department: "Human Resources",
+      mission: "We run Workday for the university — position data, reporting, and onboarding — as a platform HR and managers self-serve from.",
+      provides: [
+        { what: "Workday reporting", how: "self-service", detail: "Standard reports in Workday; custom via request." },
+        { what: "Org & position data corrections", how: "request", detail: "Request corrections to position/org data." },
+        { what: "Onboarding workflows", how: "self-service", detail: "Automated on hire; exceptions via ticket." }
+      ],
+      engage: {
+        channel: "Teams: #hr-tech",
+        queue: "ServiceNow → HR Tech",
+        hours: "Mon–Fri 8–5",
+        sla: "Data corrections: 3 business days"
+      },
+      memberIds: ["u-maria-gonzalez"],
+      described: true
+    },
+    {
+      // Undescribed on purpose: the team exists (imported from the org chart)
+      // but no one has published its Team API yet.
+      id: "team-it-business-office",
+      name: "IT Business Office",
+      type: "enabling",
+      department: "Office of Information Technology",
+      mission: "",
+      provides: [],
+      engage: {},
+      memberIds: ["u-nadia-hassan"],
+      described: false
+    }
+  ];
+
   var DEFAULT_SETTINGS = {
     useRealAI: false,
     apiKey: "",
@@ -611,9 +843,11 @@
   }
 
   function resetToSeed() {
-    var seeded = deepCopy(SEED_PEOPLE);
-    savePeople(seeded);
-    return seeded;
+    var seededPeople = deepCopy(SEED_PEOPLE);
+    var seededTeams = deepCopy(SEED_TEAMS);
+    savePeople(seededPeople);
+    saveTeams(seededTeams);
+    return seededPeople;
   }
 
   function coverage() {
@@ -626,6 +860,54 @@
       described: described,
       total: people.length,
       percent: people.length ? Math.round((described / people.length) * 100) : 0
+    };
+  }
+
+  // ---- Teams -------------------------------------------------------------
+  function loadTeams() {
+    try {
+      var raw = localStorage.getItem(TEAMS_KEY);
+      if (!raw) {
+        var seeded = deepCopy(SEED_TEAMS);
+        localStorage.setItem(TEAMS_KEY, JSON.stringify(seeded));
+        return seeded;
+      }
+      return JSON.parse(raw);
+    } catch (e) {
+      return deepCopy(SEED_TEAMS);
+    }
+  }
+
+  function saveTeams(teams) {
+    try {
+      localStorage.setItem(TEAMS_KEY, JSON.stringify(teams));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function getTeams() {
+    return loadTeams();
+  }
+
+  function getTeamById(id) {
+    var teams = loadTeams();
+    for (var i = 0; i < teams.length; i++) {
+      if (teams[i].id === id) return teams[i];
+    }
+    return null;
+  }
+
+  function teamCoverage() {
+    var teams = loadTeams();
+    var described = 0;
+    for (var i = 0; i < teams.length; i++) {
+      if (teams[i].described) described++;
+    }
+    return {
+      described: described,
+      total: teams.length,
+      percent: teams.length ? Math.round((described / teams.length) * 100) : 0
     };
   }
 
@@ -674,7 +956,11 @@
 
   // ---- Import / Export ---------------------------------------------------
   function exportJSON() {
-    return JSON.stringify({ people: loadPeople(), exportedAt: new Date().toISOString() }, null, 2);
+    return JSON.stringify({
+      people: loadPeople(),
+      teams: loadTeams(),
+      exportedAt: new Date().toISOString()
+    }, null, 2);
   }
 
   function importJSON(text) {
@@ -682,15 +968,22 @@
     var people = Array.isArray(parsed) ? parsed : parsed.people;
     if (!Array.isArray(people)) throw new Error("File does not contain a people array.");
     savePeople(people);
+    // Teams are optional for backward compatibility with older exports.
+    if (parsed && Array.isArray(parsed.teams)) saveTeams(parsed.teams);
     return people;
   }
 
   // ---- Public API --------------------------------------------------------
   window.OrgData = {
     SEED_PEOPLE: SEED_PEOPLE,
+    SEED_TEAMS: SEED_TEAMS,
+    TEAM_TYPES: TEAM_TYPES,
     getPeople: getPeople,
     getPersonById: getPersonById,
     upsertPerson: upsertPerson,
+    getTeams: getTeams,
+    getTeamById: getTeamById,
+    teamCoverage: teamCoverage,
     resetToSeed: resetToSeed,
     coverage: coverage,
     loadSettings: loadSettings,

@@ -28,6 +28,9 @@ direction. Nothing here was shipped without a human in the loop.
 - **Directed the fictional context** (a university, given the "College of
   Engineering" example) and will review and approve the result before showing it
   to anyone.
+- **Brought the Team Topologies / "Team API" direction** and chose the scope for
+  it (a minimal v1), and asked for the Microsoft Teams + Workday integration to be
+  documented as a ready-to-drop-in plan rather than implemented now.
 
 ## What the AI did
 
@@ -42,7 +45,12 @@ direction. Nothing here was shipped without a human in the loop.
   (including light/dark theming), the localStorage data layer, the ~20 fictional
   staff records, the local matching/synonym engine, the free-text-to-structured
   profile parser, the optional Claude integration, and the UI/interaction logic.
-- **Wrote the documentation**, including this file and the README.
+- **Implemented the Team Topologies "Team API" v1 layer** — team records with
+  team-type tags, the Team API cards (what a team provides + how to engage it),
+  team search, and their place in Browse and the coverage stats — plus the ~11
+  fictional teams.
+- **Wrote the documentation**, including this file, the README, and
+  `INTEGRATIONS.md` (the Microsoft Teams + Workday drop-in plan).
 - **Generated all of the fictional sample data.** The names, roles, contact
   details, and organization ("Northgate State University") are invented and do not
   represent real people or a real institution.
