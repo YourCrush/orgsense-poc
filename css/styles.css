@@ -289,6 +289,10 @@ body {
 .browse-row .br { font-size: 13px; color: var(--text-muted); text-align: right; }
 .browse-row.skeleton { opacity: 0.72; }
 .browse-row.skeleton .br { font-style: italic; }
+.browse-row.clickable { cursor: pointer; transition: background 0.12s ease, border-color 0.12s ease; }
+.browse-row.clickable:hover, .browse-row.clickable:focus-visible {
+  border-color: var(--accent); background: var(--chip-hover); outline: none;
+}
 .pill-undescribed { font-size: 10px; font-weight: 700; color: var(--danger); border: 1px solid var(--danger); border-radius: 999px; padding: 1px 6px; margin-left: 6px; }
 
 /* Typing indicator */

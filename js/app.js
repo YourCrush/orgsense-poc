@@ -270,6 +270,15 @@
     return card;
   }
 
+  // Render a team's Team API card into the chat. Shared by "Find a team" and by
+  // clicking a team row in the Browse panel.
+  function openTeamInChat(team) {
+    addMessage("user", esc("Show me the " + team.name + " team"));
+    var b = el("div", "msg-bubble");
+    b.appendChild(renderTeamCard(team));
+    addMessage("bot", b);
+  }
+
   function showTeamList() {
     var teams = OrgData.getTeams().slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
     var cov = OrgData.teamCoverage();
@@ -280,12 +289,7 @@
     var chips = el("div", "chips");
     teams.forEach(function (t) {
       var label = t.name + (t.described ? "" : " · no API yet");
-      chips.appendChild(makeChip("🧩", label, function () {
-        addMessage("user", esc("Show me the " + t.name + " team"));
-        var b = el("div", "msg-bubble");
-        b.appendChild(renderTeamCard(t));
-        addMessage("bot", b);
-      }));
+      chips.appendChild(makeChip("🧩", label, function () { openTeamInChat(t); }));
     });
     bubble.appendChild(chips);
     addMessage("bot", bubble);
@@ -456,13 +460,21 @@
     // Teams first (the Team Topologies view), then people grouped by department.
     listEl.appendChild(el("div", "browse-group-title", "Teams"));
     OrgData.getTeams().slice().sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (t) {
-      var row = el("div", "browse-row" + (t.described ? "" : " skeleton"));
+      var row = el("div", "browse-row clickable" + (t.described ? "" : " skeleton"));
+      row.setAttribute("role", "button");
+      row.setAttribute("tabindex", "0");
+      row.title = "Open " + t.name + "'s Team API in the chat";
       var tt = OrgData.TEAM_TYPES[t.type];
       var nameHtml = esc(t.name);
       if (tt) nameHtml += ' <span class="team-badge team-badge--' + t.type + '">' + esc(tt.label) + "</span>";
       if (!t.described) nameHtml += '<span class="pill-undescribed">no Team API</span>';
       row.appendChild(el("div", "bn", nameHtml));
       row.appendChild(el("div", "br", esc(t.described && t.provides[0] ? t.provides[0].what : "")));
+      var openTeam = function () { hide("browseOverlay"); openTeamInChat(t); };
+      row.addEventListener("click", openTeam);
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openTeam(); }
+      });
       listEl.appendChild(row);
     });
 
