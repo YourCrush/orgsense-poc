@@ -233,6 +233,7 @@
       '<div id="structured"></div>';
 
     var body = addMessage("bot", card);
+    body.classList.add("wide"); // fill the row like the text bubbles
     var textarea = card.querySelector("#describeArea");
     if (seedText) textarea.value = seedText;
     // Pre-fill from an existing described profile so edits are additive.
