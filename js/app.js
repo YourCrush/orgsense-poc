@@ -170,7 +170,7 @@
     addMessage("bot", bubble);
   }
 
-  function renderPersonCard(r) {
+  function renderPersonCard(r, full) {
     var p = r.person;
     var card = el("div", "result-card");
     card.appendChild(el("div", "result-name", esc(p.name)));
@@ -178,8 +178,7 @@
     if (r.skeleton) {
       card.appendChild(el("div", "result-role", esc(p.officialTitle)));
       card.appendChild(el("div", "result-meta",
-        "This person exists in the directory, but <strong>hasn't described what they do</strong>, so I can't confirm they own this. " +
-        "Their official title is all I have."
+        "This person is in the directory, but <strong>hasn't described what they do</strong> yet — so I only have their official title."
       ));
     } else {
       card.appendChild(el("div", "result-role", esc(p.functionalRole || p.officialTitle)));
@@ -188,6 +187,13 @@
       if (p.servesUnit) meta += '<span class="k">Works with:</span> ' + esc(p.servesUnit) + "<br>";
       if (p.officialTitle) meta += '<span class="k">Official title:</span> ' + esc(p.officialTitle);
       card.appendChild(el("div", "result-meta", meta));
+    }
+
+    // Full profile detail (used when opening a person from Browse).
+    if (full && !r.skeleton) {
+      appendDetailList(card, "Responsibilities", p.responsibilities);
+      appendDetailTags(card, "Skills / systems", p.skills);
+      appendDetailList(card, "Projects", p.projects);
     }
 
     card.appendChild(renderContact(p));
@@ -203,6 +209,22 @@
       card.appendChild(why);
     }
     return card;
+  }
+
+  function appendDetailList(card, label, items) {
+    if (!items || !items.length) return;
+    card.appendChild(el("div", "team-subhead", label));
+    var ul = el("ul", "detail-list");
+    items.forEach(function (x) { ul.appendChild(el("li", null, esc(x))); });
+    card.appendChild(ul);
+  }
+
+  function appendDetailTags(card, label, items) {
+    if (!items || !items.length) return;
+    card.appendChild(el("div", "team-subhead", label));
+    var tags = el("div", "detail-tags");
+    items.forEach(function (x) { tags.appendChild(el("span", "match-tag", esc(x))); });
+    card.appendChild(tags);
   }
 
   function renderContact(p) {
@@ -276,6 +298,15 @@
     addMessage("user", esc("Show me the " + team.name + " team"));
     var b = el("div", "msg-bubble");
     b.appendChild(renderTeamCard(team));
+    addMessage("bot", b);
+  }
+
+  // Render a person's full profile card into the chat. Shared by clicking a
+  // person row in the Browse panel (parallel to openTeamInChat).
+  function openPersonInChat(person) {
+    addMessage("user", esc("Tell me about " + person.name));
+    var b = el("div", "msg-bubble");
+    b.appendChild(renderPersonCard({ person: person, matched: [], skeleton: !person.described }, true));
     addMessage("bot", b);
   }
 
@@ -486,11 +517,19 @@
     Object.keys(groups).sort().forEach(function (dept) {
       listEl.appendChild(el("div", "browse-group-title", esc(dept)));
       groups[dept].sort(function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (p) {
-        var row = el("div", "browse-row" + (p.described ? "" : " skeleton"));
+        var row = el("div", "browse-row clickable" + (p.described ? "" : " skeleton"));
+        row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
+        row.title = "Open " + p.name + "'s profile in the chat";
         var nameHtml = esc(p.name);
         if (!p.described) nameHtml += '<span class="pill-undescribed">undescribed</span>';
         row.appendChild(el("div", "bn", nameHtml));
         row.appendChild(el("div", "br", esc(p.described ? (p.functionalRole || p.officialTitle) : p.officialTitle)));
+        var openPerson = function () { hide("browseOverlay"); openPersonInChat(p); };
+        row.addEventListener("click", openPerson);
+        row.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPerson(); }
+        });
         listEl.appendChild(row);
       });
     });
