@@ -207,7 +207,7 @@ sequenceDiagram
     S->>WD: nightly trigger
     WD->>DB: upsert person skeletons (described=false) + teams from supervisory orgs
     S->>GR: nightly / on-demand
-    GR->>DB: enrich contact, presence, photos; map teams to M365 groups
+    GR->>DB: enrich contact, presence, photos, map teams to M365 groups
     Note over DB: living / self-authored fields are never overwritten
 ```
 
