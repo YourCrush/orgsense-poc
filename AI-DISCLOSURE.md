@@ -49,8 +49,11 @@ direction. Nothing here was shipped without a human in the loop.
   team-type tags, the Team API cards (what a team provides + how to engage it),
   team search, and their place in Browse and the coverage stats — plus the ~11
   fictional teams.
-- **Wrote the documentation**, including this file, the README, and
-  `INTEGRATIONS.md` (the Microsoft Teams + Workday drop-in plan).
+- **Wrote the documentation**, including this file, the README,
+  `INTEGRATIONS.md` (the Microsoft Teams + Workday drop-in plan),
+  `ARCHITECTURE.md` (the proposed production architecture and diagrams), and
+  `AI-PLAYBOOK.md` (the prompts, output schemas, and model config for the AI
+  tasks) — all written to the human's direction and subject to their review.
 - **Generated all of the fictional sample data.** The names, roles, contact
   details, and organization ("Northgate State University") are invented and do not
   represent real people or a real institution.

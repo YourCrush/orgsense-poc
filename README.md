@@ -78,8 +78,10 @@ This is a **v1 slice** — team cards are seeded and read-only in the POC. Letti
 │   ├── engine.js        # Simulated matcher (people + teams), free-text parser, optional Claude integration
 │   └── app.js           # UI wiring, chat, intent routing, update flow, Team API cards
 ├── README.md
-├── AI-DISCLOSURE.md     # What the AI did vs. what the human did
+├── ARCHITECTURE.md      # Proposed production architecture + diagrams (design)
+├── AI-PLAYBOOK.md       # Prompts, output schemas & model config for every AI task (design)
 ├── INTEGRATIONS.md      # How to plumb in Microsoft Teams + Workday (design / drop-in reference)
+├── AI-DISCLOSURE.md     # What the AI did vs. what the human did
 ├── LICENSE              # MIT
 └── .nojekyll            # Tell GitHub Pages to serve files as-is
 ```
@@ -115,7 +117,13 @@ The prompt for this POC explicitly asked for suggestions rather than treating th
 - **Show *why* a result matched, and handle the empty case honestly** — the failure mode is the most persuasive part of the pitch.
 - **Free-text → structured profile** — capturing structure (not just a paragraph) is what makes search quality good; the parse step demonstrates the "AI plumbing" directly.
 - **Team Topologies "Team API" (implemented — v1)** — teams publish what they provide and *how to engage* them, tagged by team type. Reframes the tool from a directory into an operating model. See [teamtopologies.com](https://teamtopologies.com/).
-- **For production, consider:** real SSO login; syncing published contact info from Workday/Teams automatically; a proper backend so profiles are shared org-wide (not per-browser); approval/ownership so people can only edit their own entry; and periodic nudges to raise coverage. **[INTEGRATIONS.md](INTEGRATIONS.md)** is a concrete drop-in plan for the Workday + Microsoft Teams plumbing (official org structure in, self-service profile updates from inside Teams).
+- **For production, consider:** real SSO login; syncing published contact info from Workday/Teams automatically; a proper backend so profiles are shared org-wide (not per-browser); approval/ownership so people can only edit their own entry; and periodic nudges to raise coverage.
+
+Three design docs sketch the production system in detail (all forward-looking, not yet implemented):
+
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — proposed system architecture, with component/flow diagrams and a phased roadmap.
+- **[AI-PLAYBOOK.md](AI-PLAYBOOK.md)** — the system prompts, JSON output schemas, model choices, and guardrails for every AI task (profile parsing, search ranking, Team API extraction, …).
+- **[INTEGRATIONS.md](INTEGRATIONS.md)** — how to pull the official org structure/contact info from Workday + Microsoft 365 and let people update profiles from inside Teams.
 
 ---
 
